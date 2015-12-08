@@ -94,7 +94,7 @@
 
         </RelativeLayout>
 
-        <com.customview.CameraGrid
+        <com.stickercamera.customview.CameraGrid
             android:id="@+id/masking"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

@@ -20,10 +20,10 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.common.util.FileUtils;
-import com.common.util.IOUtil;
-import com.common.util.ImageUtils;
-import com.github.skykai.stickercamera.R;
+import com.stickercamera.common.util.FileUtils;
+import com.stickercamera.common.util.IOUtil;
+import com.stickercamera.common.util.ImageUtils;
+import com.stickercamera.R;
 import com.imagezoom.ImageViewTouch;
 import com.stickercamera.App;
 import com.stickercamera.app.camera.CameraBaseActivity;

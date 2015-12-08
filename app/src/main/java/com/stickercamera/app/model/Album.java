@@ -1,7 +1,7 @@
 package com.stickercamera.app.model;
 
 
-import com.common.util.StringUtils;
+import com.stickercamera.common.util.StringUtils;
 
 import java.io.Serializable;
 import java.util.ArrayList;

@@ -11,12 +11,12 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.common.util.ImageUtils;
-import com.customview.LabelView;
-import com.customview.MyHighlightView;
-import com.customview.MyImageViewDrawableOverlay;
-import com.customview.drawable.StickerDrawable;
-import com.github.skykai.stickercamera.R;
+import com.stickercamera.common.util.ImageUtils;
+import com.stickercamera.customview.LabelView;
+import com.stickercamera.customview.MyHighlightView;
+import com.stickercamera.customview.MyImageViewDrawableOverlay;
+import com.stickercamera.customview.drawable.StickerDrawable;
+import com.stickercamera.R;
 import com.imagezoom.ImageViewTouch;
 import com.stickercamera.App;
 import com.stickercamera.AppConstants;

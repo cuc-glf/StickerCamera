@@ -19,11 +19,11 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.alibaba.fastjson.JSON;
-import com.common.util.DataUtils;
-import com.common.util.FileUtils;
-import com.common.util.StringUtils;
-import com.customview.LabelView;
-import com.github.skykai.stickercamera.R;
+import com.stickercamera.common.util.DataUtils;
+import com.stickercamera.common.util.FileUtils;
+import com.stickercamera.common.util.StringUtils;
+import com.stickercamera.customview.LabelView;
+import com.stickercamera.R;
 import com.melnykov.fab.FloatingActionButton;
 import com.stickercamera.App;
 import com.stickercamera.AppConstants;

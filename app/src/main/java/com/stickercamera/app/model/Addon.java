@@ -1,7 +1,7 @@
 package com.stickercamera.app.model;
 
 import com.alibaba.fastjson.JSON;
-import com.common.util.StringUtils;
+import com.stickercamera.common.util.StringUtils;
 
 import java.util.List;
 

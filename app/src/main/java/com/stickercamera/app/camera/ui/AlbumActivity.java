@@ -7,11 +7,11 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 
-import com.common.util.FileUtils;
-import com.common.util.ImageUtils;
-import com.common.util.StringUtils;
-import com.customview.PagerSlidingTabStrip;
-import com.github.skykai.stickercamera.R;
+import com.stickercamera.common.util.FileUtils;
+import com.stickercamera.common.util.ImageUtils;
+import com.stickercamera.common.util.StringUtils;
+import com.stickercamera.customview.PagerSlidingTabStrip;
+import com.stickercamera.R;
 import com.stickercamera.AppConstants;
 import com.stickercamera.app.camera.CameraBaseActivity;
 import com.stickercamera.app.camera.fragment.AlbumFragment;

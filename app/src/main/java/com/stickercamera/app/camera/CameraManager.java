@@ -5,7 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 
-import com.common.util.ImageUtils;
+import com.stickercamera.common.util.ImageUtils;
 import com.stickercamera.AppConstants;
 import com.stickercamera.app.camera.ui.CameraActivity;
 import com.stickercamera.app.camera.ui.CropPhotoActivity;
