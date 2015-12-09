@@ -6,7 +6,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.TypedValue;
-import android.view.View;
 
 import com.readystatesoftware.systembartint.SystemBarTintManager;
 import com.stickercamera.R;
@@ -56,12 +55,7 @@ public class BaseActivity extends AppCompatActivity implements ActivityResponsab
         super.setContentView(layoutResID);
         titleBar = (CommonTitleBar) findViewById(R.id.title_layout);
         if (titleBar != null)
-            titleBar.setLeftBtnOnclickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    finish();
-                }
-            });
+            titleBar.setLeftBtnOnclickListener(v -> finish());
     }
 
     /**

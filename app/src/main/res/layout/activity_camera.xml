@@ -20,7 +20,7 @@
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:background="@color/white"
+            android:background="@color/transparent"
             android:gravity="center_vertical"
             android:padding="2dp">
 
@@ -54,14 +54,14 @@
         </RelativeLayout>
 
 
-        <LinearLayout
-            android:id="@+id/photo_area"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_above="@id/panel_take_photo"
-            android:layout_centerVertical="true"
-            android:background="@color/white"
-            android:orientation="horizontal"></LinearLayout>
+        <!--<LinearLayout-->
+            <!--android:id="@+id/photo_area"-->
+            <!--android:layout_width="fill_parent"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--android:layout_above="@id/panel_take_photo"-->
+            <!--android:layout_centerVertical="true"-->
+            <!--android:background="@color/white"-->
+            <!--android:orientation="horizontal"></LinearLayout>-->
 
 
         <RelativeLayout
@@ -69,7 +69,7 @@
             android:layout_width="fill_parent"
             android:layout_height="40dp"
             android:layout_alignParentTop="true"
-            android:background="#00000000">
+            android:background="@color/transparent">
 
             <ImageView
                 android:id="@+id/flashBtn"
@@ -98,14 +98,12 @@
             android:id="@+id/masking"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_above="@id/photo_area"
             android:layout_alignParentTop="true" />
 
         <View
             android:id="@+id/focus_index"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_above="@id/photo_area"
             android:background="@drawable/cam_focus"
             android:visibility="invisible" />
     </RelativeLayout>

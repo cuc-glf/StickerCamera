@@ -15,42 +15,34 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.FloatMath;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.ScaleAnimation;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-import com.stickercamera.common.util.DistanceUtil;
-import com.stickercamera.common.util.FileUtils;
-import com.stickercamera.common.util.IOUtil;
-import com.stickercamera.common.util.ImageLoaderUtils;
-import com.stickercamera.common.util.ImageUtils;
-import com.stickercamera.common.util.StringUtils;
-import com.stickercamera.customview.CameraGrid;
-import com.stickercamera.R;
 import com.stickercamera.App;
 import com.stickercamera.AppConstants;
+import com.stickercamera.R;
 import com.stickercamera.app.camera.CameraBaseActivity;
 import com.stickercamera.app.camera.CameraManager;
 import com.stickercamera.app.camera.util.CameraHelper;
 import com.stickercamera.app.model.PhotoItem;
+import com.stickercamera.common.util.FileUtils;
+import com.stickercamera.common.util.IOUtil;
+import com.stickercamera.common.util.ImageUtils;
+import com.stickercamera.common.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.List;
 
 import butterknife.ButterKnife;
@@ -62,13 +54,20 @@ import butterknife.InjectView;
  */
 public class CameraActivity extends CameraBaseActivity {
 
+    private static final String TAG = "Camera";
+    /**
+     * 最小预览界面的分辨率
+     */
+    private static final int MIN_PREVIEW_PIXELS = 480 * 320;
+    /**
+     * 最大宽高比差
+     */
+    private static final double MAX_ASPECT_DISTORTION = 0.15;
+
     private CameraHelper mCameraHelper;
     private Camera.Parameters parameters = null;
-    private Camera cameraInst = null;
+    private Camera camera = null;
     private Bundle bundle = null;
-    private int photoWidth = DistanceUtil.getCameraPhotoWidth();
-    private int photoNumber = 4;
-    private int photoMargin = App.getApp().dp2px(1);
     private float pointX, pointY;
     static final int FOCUS = 1;            // 聚焦
     static final int ZOOM = 2;            // 缩放
@@ -78,10 +77,6 @@ public class CameraActivity extends CameraBaseActivity {
     private int mCurrentCameraId = 0;  //1是前置 0是后置
     private Handler handler = new Handler();
 
-    @InjectView(R.id.masking)
-    CameraGrid cameraGrid;
-    @InjectView(R.id.photo_area)
-    LinearLayout photoArea;
     @InjectView(R.id.panel_take_photo)
     View takePhotoPanel;
     @InjectView(R.id.takepicture)
@@ -115,76 +110,22 @@ public class CameraActivity extends CameraBaseActivity {
         surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         surfaceHolder.setKeepScreenOn(true);
         surfaceView.setFocusable(true);
-        surfaceView.setBackgroundColor(TRIM_MEMORY_BACKGROUND);
         surfaceView.getHolder().addCallback(new SurfaceCallback());//为SurfaceView的句柄添加一个回调函数
-
-        //设置相机界面,照片列表,以及拍照布局的高度(保证相机预览为正方形)
-        ViewGroup.LayoutParams layout = cameraGrid.getLayoutParams();
-        layout.height = App.getApp().getScreenWidth();
-        layout = photoArea.getLayoutParams();
-        layout.height = DistanceUtil.getCameraPhotoAreaHeight();
-        layout = takePhotoPanel.getLayoutParams();
-        layout.height = App.getApp().getScreenHeight()
-                - App.getApp().getScreenWidth()
-                - DistanceUtil.getCameraPhotoAreaHeight();
-
-        //添加系统相册内的图片
-        ArrayList<PhotoItem> sysPhotos = FileUtils.getInst().findPicsInDir(
-                FileUtils.getInst().getSystemPhotoPath());
-        int showNumber = sysPhotos.size() > photoNumber ? photoNumber
-                : sysPhotos.size();
-        for (int i = 0; i < showNumber; i++) {
-            addPhoto(sysPhotos.get(showNumber - 1 - i));
-        }
-    }
-
-    private void addPhoto(PhotoItem photoItem) {
-        ImageView photo = new ImageView(this);
-        if (StringUtils.isNotBlank(photoItem.getImageUri())) {
-            ImageLoaderUtils.displayLocalImage(photoItem.getImageUri(), photo, null);
-        } else {
-            photo.setImageResource(R.drawable.default_img);
-        }
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                photoWidth, photoWidth);
-        params.leftMargin = photoMargin;
-        params.rightMargin = photoMargin;
-        params.gravity = Gravity.CENTER;
-        photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        photo.setTag(photoItem.getImageUri());
-
-        if (photoArea.getChildCount() >= photoNumber) {
-            photoArea.removeViewAt(photoArea.getChildCount() - 1);
-            photoArea.addView(photo, 0, params);
-        } else {
-            photoArea.addView(photo, 0, params);
-        }
-        photo.setOnClickListener(v -> {
-            if (v instanceof ImageView && v.getTag() instanceof String) {
-                CameraManager.getInst().processPhotoItem(CameraActivity.this,
-                        new PhotoItem((String) v.getTag(), System.currentTimeMillis()));
-            }
-        });
     }
 
     private void initEvent() {
         //拍照
         takePicture.setOnClickListener(v -> {
             try {
-                cameraInst.takePicture(null, null, new MyPictureCallback());
+                camera.takePicture(null, null, new MyPictureCallback());
             } catch (Throwable t) {
                 t.printStackTrace();
                 toast("拍照失败，请重试！", Toast.LENGTH_LONG);
-                try {
-                    cameraInst.startPreview();
-                } catch (Throwable e) {
-
-                }
             }
 
         });
         //闪光灯
-        flashBtn.setOnClickListener(v -> turnLight(cameraInst));
+        flashBtn.setOnClickListener(v -> turnLight(camera));
         //前后置摄像头切换
         boolean canSwitch = false;
         try {
@@ -295,7 +236,7 @@ public class CameraActivity extends CameraBaseActivity {
     private void addZoomIn(int delta) {
 
         try {
-            Camera.Parameters params = cameraInst.getParameters();
+            Camera.Parameters params = camera.getParameters();
             Log.d("Camera", "Is support Zoom " + params.isZoomSupported());
             if (!params.isZoomSupported()) {
                 return;
@@ -309,10 +250,10 @@ public class CameraActivity extends CameraBaseActivity {
 
             if (!params.isSmoothZoomSupported()) {
                 params.setZoom(curZoomValue);
-                cameraInst.setParameters(params);
+                camera.setParameters(params);
                 return;
             } else {
-                cameraInst.startSmoothZoom(curZoomValue);
+                camera.startSmoothZoom(curZoomValue);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -321,12 +262,12 @@ public class CameraActivity extends CameraBaseActivity {
 
     //定点对焦的代码
     private void pointFocus(int x, int y) {
-        cameraInst.cancelAutoFocus();
-        parameters = cameraInst.getParameters();
+        camera.cancelAutoFocus();
+        parameters = camera.getParameters();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
             showPoint(x, y);
         }
-        cameraInst.setParameters(parameters);
+        camera.setParameters(parameters);
         autoFocus();
     }
 
@@ -357,7 +298,7 @@ public class CameraActivity extends CameraBaseActivity {
             bundle = new Bundle();
             bundle.putByteArray("bytes", data); //将图片字节数据保存在bundle当中，实现数据交换
             new SavePicTask(data).execute();
-            camera.startPreview(); // 拍完照后，重新开始预览
+//            camera.startPreview(); // 拍完照后，重新开始预览
         }
     }
 
@@ -367,8 +308,6 @@ public class CameraActivity extends CameraBaseActivity {
         protected void onPreExecute() {
             showProgressDialog("处理中");
         }
-
-        ;
 
         SavePicTask(byte[] data) {
             this.data = data;
@@ -390,24 +329,22 @@ public class CameraActivity extends CameraBaseActivity {
 
             if (StringUtils.isNotEmpty(result)) {
                 dismissProgressDialog();
-                    CameraManager.getInst().processPhotoItem(CameraActivity.this,
-                            new PhotoItem(result, System.currentTimeMillis()));
+                CameraManager.getInst().processPhotoItem(CameraActivity.this,
+                        new PhotoItem(result, System.currentTimeMillis()));
             } else {
                 toast("拍照失败，请稍后重试！", Toast.LENGTH_LONG);
             }
         }
     }
 
-
-    /*SurfaceCallback*/
     private final class SurfaceCallback implements SurfaceHolder.Callback {
 
         public void surfaceDestroyed(SurfaceHolder holder) {
             try {
-                if (cameraInst != null) {
-                    cameraInst.stopPreview();
-                    cameraInst.release();
-                    cameraInst = null;
+                if (camera != null) {
+                    camera.stopPreview();
+                    camera.release();
+                    camera = null;
                 }
             } catch (Exception e) {
                 //相机已经关了
@@ -417,16 +354,16 @@ public class CameraActivity extends CameraBaseActivity {
 
         @Override
         public void surfaceCreated(SurfaceHolder holder) {
-            if (null == cameraInst) {
+//            if (null == camera) {
                 try {
-                    cameraInst = Camera.open();
-                    cameraInst.setPreviewDisplay(holder);
+                    camera = Camera.open();
                     initCamera();
-                    cameraInst.startPreview();
+                    camera.setPreviewDisplay(holder);
+                    camera.startPreview();
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
-            }
+//            }
         }
 
         @Override
@@ -445,171 +382,52 @@ public class CameraActivity extends CameraBaseActivity {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                if (cameraInst == null) {
+                if (camera == null) {
                     return;
                 }
-                cameraInst.autoFocus(new Camera.AutoFocusCallback() {
-                    @Override
-                    public void onAutoFocus(boolean success, Camera camera) {
-                        if (success) {
-                            initCamera();//实现相机的参数初始化
-                        }
-                    }
+                camera.autoFocus((success, camera1) -> {
+//                    if (success) {
+//                        initCamera();//实现相机的参数初始化
+//                    }
                 });
             }
         };
     }
 
-    private Camera.Size adapterSize = null;
-    private Camera.Size previewSize = null;
-
     private void initCamera() {
-        parameters = cameraInst.getParameters();
+        parameters = camera.getParameters();
         parameters.setPictureFormat(PixelFormat.JPEG);
-        //if (adapterSize == null) {
-        setUpPicSize(parameters);
-        setUpPreviewSize(parameters);
-        //}
-        if (adapterSize != null) {
-            parameters.setPictureSize(adapterSize.width, adapterSize.height);
-        }
+        Camera.Size previewSize = findBestResolution();
+
         if (previewSize != null) {
+            parameters.setPictureSize(previewSize.width, previewSize.height);
             parameters.setPreviewSize(previewSize.width, previewSize.height);
         }
 
-
+        List<String> supportedFocusModes = parameters.getSupportedFocusModes();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);//1连续对焦
+            if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            }
         } else {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            } else {
+                Log.e(TAG, "poor camera..supported focus modes are: " + Arrays.toString(supportedFocusModes.toArray()));
+            }
         }
-        setDispaly(parameters, cameraInst);
+
+        camera.setDisplayOrientation(90);
         try {
-            cameraInst.setParameters(parameters);
+            camera.setParameters(parameters);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        cameraInst.startPreview();
-        cameraInst.cancelAutoFocus();// 2如果要实现连续的自动对焦，这一句必须加上
     }
 
-    private void setUpPicSize(Camera.Parameters parameters) {
-
-        if (adapterSize != null) {
-            return;
-        } else {
-            adapterSize = findBestPictureResolution();
-            return;
-        }
-    }
-
-    private void setUpPreviewSize(Camera.Parameters parameters) {
-
-        if (previewSize != null) {
-            return;
-        } else {
-            previewSize = findBestPreviewResolution();
-        }
-    }
-
-    /**
-     * 最小预览界面的分辨率
-     */
-    private static final int MIN_PREVIEW_PIXELS = 480 * 320;
-    /**
-     * 最大宽高比差
-     */
-    private static final double MAX_ASPECT_DISTORTION = 0.15;
-    private static final String TAG = "Camera";
-
-    /**
-     * 找出最适合的预览界面分辨率
-     *
-     * @return
-     */
-    private Camera.Size findBestPreviewResolution() {
-        Camera.Parameters cameraParameters = cameraInst.getParameters();
-        Camera.Size defaultPreviewResolution = cameraParameters.getPreviewSize();
-
-        List<Camera.Size> rawSupportedSizes = cameraParameters.getSupportedPreviewSizes();
-        if (rawSupportedSizes == null) {
-            return defaultPreviewResolution;
-        }
-
-        // 按照分辨率从大到小排序
-        List<Camera.Size> supportedPreviewResolutions = new ArrayList<Camera.Size>(rawSupportedSizes);
-        Collections.sort(supportedPreviewResolutions, new Comparator<Camera.Size>() {
-            @Override
-            public int compare(Camera.Size a, Camera.Size b) {
-                int aPixels = a.height * a.width;
-                int bPixels = b.height * b.width;
-                if (bPixels < aPixels) {
-                    return -1;
-                }
-                if (bPixels > aPixels) {
-                    return 1;
-                }
-                return 0;
-            }
-        });
-
-        StringBuilder previewResolutionSb = new StringBuilder();
-        for (Camera.Size supportedPreviewResolution : supportedPreviewResolutions) {
-            previewResolutionSb.append(supportedPreviewResolution.width).append('x').append(supportedPreviewResolution.height)
-                    .append(' ');
-        }
-        Log.v(TAG, "Supported preview resolutions: " + previewResolutionSb);
-
-
-        // 移除不符合条件的分辨率
-        double screenAspectRatio = (double) App.getApp().getScreenWidth()
-                / (double) App.getApp().getScreenHeight();
-        Iterator<Camera.Size> it = supportedPreviewResolutions.iterator();
-        while (it.hasNext()) {
-            Camera.Size supportedPreviewResolution = it.next();
-            int width = supportedPreviewResolution.width;
-            int height = supportedPreviewResolution.height;
-
-            // 移除低于下限的分辨率，尽可能取高分辨率
-            if (width * height < MIN_PREVIEW_PIXELS) {
-                it.remove();
-                continue;
-            }
-
-            // 在camera分辨率与屏幕分辨率宽高比不相等的情况下，找出差距最小的一组分辨率
-            // 由于camera的分辨率是width>height，我们设置的portrait模式中，width<height
-            // 因此这里要先交换然preview宽高比后在比较
-            boolean isCandidatePortrait = width > height;
-            int maybeFlippedWidth = isCandidatePortrait ? height : width;
-            int maybeFlippedHeight = isCandidatePortrait ? width : height;
-            double aspectRatio = (double) maybeFlippedWidth / (double) maybeFlippedHeight;
-            double distortion = Math.abs(aspectRatio - screenAspectRatio);
-            if (distortion > MAX_ASPECT_DISTORTION) {
-                it.remove();
-                continue;
-            }
-
-            // 找到与屏幕分辨率完全匹配的预览界面分辨率直接返回
-            if (maybeFlippedWidth == App.getApp().getScreenWidth()
-                    && maybeFlippedHeight == App.getApp().getScreenHeight()) {
-                return supportedPreviewResolution;
-            }
-        }
-
-        // 如果没有找到合适的，并且还有候选的像素，则设置其中最大比例的，对于配置比较低的机器不太合适
-        if (!supportedPreviewResolutions.isEmpty()) {
-            Camera.Size largestPreview = supportedPreviewResolutions.get(0);
-            return largestPreview;
-        }
-
-        // 没有找到合适的，就返回默认的
-
-        return defaultPreviewResolution;
-    }
-
-    private Camera.Size findBestPictureResolution() {
-        Camera.Parameters cameraParameters = cameraInst.getParameters();
-        List<Camera.Size> supportedPicResolutions = cameraParameters.getSupportedPictureSizes(); // 至少会返回一个值
+    private Camera.Size findBestResolution() {
+        Camera.Parameters cameraParameters = camera.getParameters();
+        ArrayList<Camera.Size> supportedPicResolutions = new ArrayList<>(cameraParameters.getSupportedPreviewSizes()); // 至少会返回一个值
 
         StringBuilder picResolutionSb = new StringBuilder();
         for (Camera.Size supportedPicResolution : supportedPicResolutions) {
@@ -618,68 +436,32 @@ public class CameraActivity extends CameraBaseActivity {
         }
         Log.d(TAG, "Supported picture resolutions: " + picResolutionSb);
 
-        Camera.Size defaultPictureResolution = cameraParameters.getPictureSize();
-        Log.d(TAG, "default picture resolution " + defaultPictureResolution.width + "x"
-                + defaultPictureResolution.height);
+        Camera.Size defaultPreviewSize = cameraParameters.getPreviewSize();
+        Log.d(TAG, "default picture resolution " + defaultPreviewSize.width + "x"
+                + defaultPreviewSize.height);
 
-        // 排序
-        List<Camera.Size> sortedSupportedPicResolutions = new ArrayList<Camera.Size>(
-                supportedPicResolutions);
-        Collections.sort(sortedSupportedPicResolutions, new Comparator<Camera.Size>() {
-            @Override
-            public int compare(Camera.Size a, Camera.Size b) {
-                int aPixels = a.height * a.width;
-                int bPixels = b.height * b.width;
-                if (bPixels < aPixels) {
-                    return -1;
-                }
-                if (bPixels > aPixels) {
-                    return 1;
-                }
-                return 0;
-            }
-        });
 
-        // 移除不符合条件的分辨率
         double screenAspectRatio = (double) App.getApp().getScreenWidth()
                 / (double) App.getApp().getScreenHeight();
-        Iterator<Camera.Size> it = sortedSupportedPicResolutions.iterator();
-        while (it.hasNext()) {
-            Camera.Size supportedPreviewResolution = it.next();
-            int width = supportedPreviewResolution.width;
-            int height = supportedPreviewResolution.height;
-
-            // 在camera分辨率与屏幕分辨率宽高比不相等的情况下，找出差距最小的一组分辨率
-            // 由于camera的分辨率是width>height，我们设置的portrait模式中，width<height
-            // 因此这里要先交换然后在比较宽高比
-            boolean isCandidatePortrait = width > height;
-            int maybeFlippedWidth = isCandidatePortrait ? height : width;
-            int maybeFlippedHeight = isCandidatePortrait ? width : height;
-            double aspectRatio = (double) maybeFlippedWidth / (double) maybeFlippedHeight;
-            double distortion = Math.abs(aspectRatio - screenAspectRatio);
-            if (distortion > MAX_ASPECT_DISTORTION) {
-                it.remove();
+        float bestAspect = -1;
+        Camera.Size bestSize = null;
+        for (Camera.Size size : supportedPicResolutions) {
+            if (size.height * size.width < MIN_PREVIEW_PIXELS) {
                 continue;
+            }
+            float aspect = (float)size.height / size.width;
+            if (Math.abs(aspect - screenAspectRatio) < Math.abs(bestAspect - screenAspectRatio)) {
+                bestAspect = aspect;
+                bestSize = size;
             }
         }
 
-        // 如果没有找到合适的，并且还有候选的像素，对于照片，则取其中最大比例的，而不是选择与屏幕分辨率相同的
-        if (!sortedSupportedPicResolutions.isEmpty()) {
-            return sortedSupportedPicResolutions.get(0);
+        if (bestSize != null) {
+            return bestSize;
         }
 
         // 没有找到合适的，就返回默认的
-        return defaultPictureResolution;
-    }
-
-
-    //控制图像的正确显示方向
-    private void setDispaly(Camera.Parameters parameters, Camera camera) {
-        if (Build.VERSION.SDK_INT >= 8) {
-            setDisplayOrientation(camera, 90);
-        } else {
-            parameters.setRotation(90);
-        }
+        return defaultPreviewSize;
     }
 
     //实现的图像的正确显示
@@ -806,25 +588,23 @@ public class CameraActivity extends CameraBaseActivity {
     }
 
     private void releaseCamera() {
-        if (cameraInst != null) {
-            cameraInst.setPreviewCallback(null);
-            cameraInst.release();
-            cameraInst = null;
+        if (camera != null) {
+            camera.setPreviewCallback(null);
+            camera.release();
+            camera = null;
         }
-        adapterSize = null;
-        previewSize = null;
     }
 
     /**
      * @param mCurrentCameraId2
      */
     private void setUpCamera(int mCurrentCameraId2) {
-        cameraInst = getCameraInstance(mCurrentCameraId2);
-        if (cameraInst != null) {
+        camera = getCameraInstance(mCurrentCameraId2);
+        if (camera != null) {
             try {
-                cameraInst.setPreviewDisplay(surfaceView.getHolder());
+                camera.setPreviewDisplay(surfaceView.getHolder());
                 initCamera();
-                cameraInst.startPreview();
+                camera.startPreview();
             } catch (IOException e) {
                 e.printStackTrace();
             }
